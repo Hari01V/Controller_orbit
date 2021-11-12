@@ -6,6 +6,8 @@ import * as dat from 'dat.gui'
 import * as CANNON from 'cannon'
 // import { CannonDebugRenderer } from 'cannon/tools/threejs/CannonDebugRenderer'
 import { CannonDebugRenderer } from './js/CannonDebugRenderer'
+import { Player } from './js/Player'
+import { ThirdPersonCamera } from '../../physics/src/ThirdPersonCamera'
 
 
 /**
@@ -15,7 +17,13 @@ const gui = new dat.GUI()
 const debugObject = {}
 
 
-
+/**
+ * Sizes
+ */
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight
+}
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -24,7 +32,35 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 scene.background = new THREE.Color(0xa0aabe)
 
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
+scene.add(ambientLight)
 
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+directionalLight.castShadow = true
+directionalLight.shadow.mapSize.set(1024, 1024)
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.camera.left = - 7
+directionalLight.shadow.camera.top = 7
+directionalLight.shadow.camera.right = 7
+directionalLight.shadow.camera.bottom = - 7
+directionalLight.position.set(5, 5, 5)
+scene.add(directionalLight)
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.set(- 3, 3, 3)
+scene.add(camera)
+
+
+// Controls
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
 
 /**
  * Physics
@@ -94,7 +130,6 @@ playerMesh.castShadow = true
 playerMesh.position.set(3, 6, 0);
 // playerMesh.scale.set(0.1, 0.1, 0.1)
 scene.add(playerMesh)
-// const shape = new CANNON.Sphere(1)
 const playerShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5))
 const playerBody = new CANNON.Body({
   mass: 1,
@@ -107,32 +142,16 @@ objectsToUpdate.push({ model: playerMesh, body: playerBody })
 
 let cannonDebugRenderer = new THREE.CannonDebugRenderer(scene, world);
 
+const player = new Player(playerBody, world, playerMesh, scene, camera);
+
+const thirdPersonCamera = new ThirdPersonCamera(camera, playerMesh, controls);
+
+// CAMERA GUI
+const cameraGUI = gui.addFolder('Camera')
+cameraGUI.add(thirdPersonCamera, '_targetRadius').min(5).max(8).step(0.1).name('Target Radius')
+cameraGUI.add(thirdPersonCamera, '_yOffset').min(2.5).max(5).step(0.1).name('Y Offset')
 
 
-/**
- * Lights
- */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-scene.add(ambientLight)
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-directionalLight.castShadow = true
-directionalLight.shadow.mapSize.set(1024, 1024)
-directionalLight.shadow.camera.far = 15
-directionalLight.shadow.camera.left = - 7
-directionalLight.shadow.camera.top = 7
-directionalLight.shadow.camera.right = 7
-directionalLight.shadow.camera.bottom = - 7
-directionalLight.position.set(5, 5, 5)
-scene.add(directionalLight)
-
-/**
- * Sizes
- */
-const sizes = {
-  width: window.innerWidth,
-  height: window.innerHeight
-}
 
 window.addEventListener('resize', () => {
   // Update sizes
@@ -148,18 +167,6 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(- 3, 3, 3)
-scene.add(camera)
-
-
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
 
 /**
  * Renderer
@@ -191,8 +198,17 @@ const tick = () => {
     cannonDebugRenderer.update();
   }
 
+  // UPDATE THIRD PERSON CAMERA
+  if (thirdPersonCamera) {
+    thirdPersonCamera.Update(elapsedTime);
+  }
+
+  if (player) {
+    player.Update(deltaTime);
+  }
+
   // Update controls
-  controls.update();
+  // controls.update();
 
   for (const object of objectsToUpdate) {
     object.model.position.copy(object.body.position)
