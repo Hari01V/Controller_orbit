@@ -7,7 +7,7 @@ import * as CANNON from 'cannon'
 // import { CannonDebugRenderer } from 'cannon/tools/threejs/CannonDebugRenderer'
 import { CannonDebugRenderer } from './js/CannonDebugRenderer'
 import { Player } from './js/Player'
-import { ThirdPersonCamera } from '../../physics/src/ThirdPersonCamera'
+import { ThirdPersonCamera } from './js/ThirdPersonCamera';
 
 
 /**
